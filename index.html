@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Blok Puzzle 10x10</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --bg-gradient: linear-gradient(-45deg, #0f172a, #1e293b, #334155, #0f172a);
+            --container-bg: rgba(30, 41, 59, 0.7);
+            --grid-bg: rgba(15, 23, 42, 0.5);
+            --cell-bg: rgba(51, 65, 85, 0.5);
+            --cell-border: rgba(255, 255, 255, 0.05);
+            --text-color: #f8fafc;
+            --accent-color: #38bdf8;
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --panel-bg: rgba(30, 41, 59, 0.8);
+
+            --block-color-1: #ef4444;
+            /* Kırmızı */
+            --block-color-2: #f97316;
+            /* Turuncu */
+            --block-color-3: #eab308;
+            /* Sarı */
+            --block-color-4: #22c55e;
+            /* Yeşil */
+            --block-color-5: #06b6d4;
+            /* Turkuaz */
+            --block-color-6: #3b82f6;
+            /* Mavi */
+            --block-color-7: #a855f7;
+            /* Mor */
+            --block-color-8: #ec4899;
+            /* Pembe */
+        }
+
+        [data-theme="pastel"] {
+            --bg-color: #f2efe9;
+            /* Patlama efektinin belli olması için hafif daha doygun tonlar ve daha belirgin arkaplan */
+            --bg-gradient: linear-gradient(-45deg, #f4efe9, #f7e6e6, #f7ecd4, #edf0d5, #f4efe9);
+            --container-bg: rgba(255, 255, 255, 0.7);
+            --grid-bg: rgba(228, 222, 216, 0.85);
+            --cell-bg: rgba(245, 240, 235, 0.9);
+            --cell-border: rgba(0, 0, 0, 0.05);
+            --text-color: #4a4555;
+            --accent-color: #e57373;
+            --shadow-color: rgba(0, 0, 0, 0.08);
+            --panel-bg: rgba(255, 255, 255, 0.95);
+
+            --block-color-1: #ff8a8a;
+            --block-color-2: #ffb570;
+            --block-color-3: #fadd5c;
+            --block-color-4: #8de397;
+            --block-color-5: #7bdeeb;
+            --block-color-6: #8daeff;
+            --block-color-7: #b39cf5;
+            --block-color-8: #f095e4;
+        }
+
+        [data-theme="retro"] {
+            --bg-color: #2b2b2b;
+            /* Retro havası için arkaplan geçişlerine hafif sıcak/sepya kahve atıldı */
+            --bg-gradient: linear-gradient(-45deg, #2b2b2b, #38322e, #3a3d40, #2b2b2b);
+            --container-bg: #3c3f41;
+            --grid-bg: #1a1816;
+            --cell-bg: #4f4c4a;
+            --cell-border: #252323;
+            --text-color: #b5c3d1;
+            --accent-color: #d17f38;
+            --shadow-color: rgba(0, 0, 0, 0.8);
+            --panel-bg: #3c3f41;
+
+            --block-color-1: #cc7832;
+            --block-color-2: #6a8759;
+            --block-color-3: #9876aa;
+            --block-color-4: #6897bb;
+            --block-color-5: #ffc66d;
+            --block-color-6: #e8bf6a;
+            --block-color-7: #808080;
+            --block-color-8: #a5c261;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: none !important;
+            /* Mobil tarayıcılarda pan ve scroll engeli */
+        }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            min-height: 100dvh;
+            /* Yeni nesil mobile browserlarda footer hatasını çözer */
+            overflow: hidden;
+            overscroll-behavior: none;
+            /* Pull-to-refresh engeli */
+            transition: background 0.4s, color 0.4s;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: 100vh;
+            height: 100dvh;
+            max-height: 900px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--container-bg);
+            padding: 15px 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--cell-border);
+        }
+
+        .score-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .score-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.8;
+        }
+
+        .score-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            transition: transform 0.2s;
+        }
+
+        .score-value.bump {
+            transform: scale(1.3);
+            color: var(--block-color-4);
+        }
+
+        .custom-select {
+            background: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--cell-border);
+            padding: 8px 12px;
+            border-radius: 8px;
+            outline: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+
+        .icon-btn {
+            background: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--cell-border);
+            padding: 5px 10px;
+            margin-top: 5px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            outline: none;
+            transition: transform 0.1s, opacity 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
+        .icon-btn:active {
+            transform: scale(0.9);
+        }
+
+        .icon-btn.disabled {
+            opacity: 0.5;
+            filter: grayscale(1);
+        }
+
+        #board-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            gap: 2px;
+            background: var(--grid-bg);
+            padding: 4px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px var(--shadow-color);
+            aspect-ratio: 1/1;
+            width: 100%;
+            max-width: 450px;
+            border: 1px solid var(--cell-border);
+            transform: translateZ(0); /* GPU Acceleration */
+        }
+
+        .cell {
+            background: var(--cell-bg);
+            border-radius: 6px;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+            transition: background 0.15s, transform 0.1s;
+        }
+
+        .cell.filled {
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .cell.hover-preview {
+            opacity: 0.7;
+            transform: scale(0.9);
+        }
+
+        .cell.will-clear-preview {
+            animation: previewPulse 0.5s alternate infinite;
+            z-index: 5;
+        }
+
+        @keyframes previewPulse {
+            0% {
+                filter: brightness(1.2);
+                box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.4);
+            }
+
+            100% {
+                filter: brightness(1.8) sepia(0.3);
+                transform: scale(0.95);
+                box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.9);
+            }
+        }
+
+        .cell.clearing {
+            animation: clearAnim 0.3s forwards;
+        }
+
+        @keyframes clearAnim {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.2);
+                opacity: 0.5;
+                filter: brightness(2);
+            }
+
+            100% {
+                transform: scale(0);
+                opacity: 0;
+            }
+        }
+
+        #combo-display {
+            position: fixed;
+            top: 25%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--accent-color);
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #combo-display.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        #shape-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: var(--container-bg);
+            padding: 15px;
+            border-radius: 16px;
+            min-height: 120px;
+            box-shadow: 0 4px 6px var(--shadow-color);
+        }
+
+        .shape-slot {
+            width: 80px;
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* The drawn shape blocks */
+        .shape {
+            display: grid;
+            gap: 2px;
+            cursor: grab;
+            touch-action: none;
+            /* Mobil tarayıcı sürükleme davranışını devre dışı bırak */
+            transition: opacity 0.3s, filter 0.3s;
+        }
+
+        .shape.unplayable {
+            opacity: 0.25 !important;
+            filter: grayscale(0.8) !important;
+            pointer-events: none !important;
+            cursor: not-allowed;
+        }
+
+        .shape-active {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1000;
+            transform: translate(-50%, -120%);
+            /* Parmağın biraz üzerinde çıksın */
+            opacity: 0.9;
+            filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.5));
+        }
+
+        .shape-block {
+            border-radius: 6px;
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.3), 0 2px 5px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Game Over Modal */
+        #modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        #modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: var(--panel-bg);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 40px var(--shadow-color);
+            border: 1px solid var(--cell-border);
+            transform: scale(0.9);
+            transition: transform 0.3s;
+            display: none;
+        }
+
+        #modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-card h2 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: var(--accent-color);
+        }
+
+        .modal-card p {
+            font-size: 1.2rem;
+            margin-bottom: 25px;
+        }
+
+        .action-btn {
+            background: var(--accent-color);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            transition: transform 0.1s, filter 0.2s;
+        }
+
+        .action-btn:active {
+            transform: scale(0.95);
+            filter: brightness(0.9);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="game-container">
+        <header>
+            <div class="score-box">
+                <span class="score-label">Skor</span>
+                <span id="score" class="score-value">0</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:5px; align-items:center;">
+                <select id="board-size-selector" class="custom-select">
+                    <option value="8">8x8 Tahta</option>
+                    <option value="10">10x10 Tahta</option>
+                </select>
+                <select id="theme-selector" class="custom-select">
+                    <option value="neon">Neon Tema</option>
+                    <option value="pastel">Pastel Tema</option>
+                    <option value="retro">Retro Tema</option>
+                </select>
+                <div style="display:flex; gap:10px;">
+                    <button id="toggle-sound" class="icon-btn" title="Ses Aç/Kapat">🔊</button>
+                    <button id="toggle-vibrate" class="icon-btn" title="Titreşim Aç/Kapat">📳</button>
+                </div>
+            </div>
+            <div class="score-box">
+                <span class="score-label">En İyi</span>
+                <span id="best-score" class="score-value">0</span>
+            </div>
+        </header>
+
+        <div id="board-container">
+            <div id="board">
+                <!-- JavaScript ile 100 hücre oluşturulacak -->
+            </div>
+        </div>
+
+        <div id="shape-container">
+            <div class="shape-slot" id="slot-0"></div>
+            <div class="shape-slot" id="slot-1"></div>
+            <div class="shape-slot" id="slot-2"></div>
+        </div>
+    </div>
+
+    <div id="combo-display">Combo x2!</div>
+
+    <div id="modal-overlay">
+        <div id="game-over-modal" class="modal-card" style="display:none;">
+            <h2>Oyun Bitti!</h2>
+            <p>Skorunuz: <b id="final-score">0</b></p>
+            <button id="restart-btn" class="action-btn">Tekrar Oyna</button>
+        </div>
+        <div id="exit-modal" class="modal-card" style="display:none;">
+            <h2>Çıkış</h2>
+            <p>Oyundan çıkmak istiyor musunuz?</p>
+            <div style="display:flex; gap:15px; justify-content:center; margin-top:20px;">
+                <button id="exit-yes-btn" class="action-btn" style="background:#ef4444;">Evet, Çık</button>
+                <button id="exit-no-btn" class="action-btn" style="background:#3b82f6;">Hayır, Devam</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Haptic feedback için ses eklenebilir veya navigator.vibrate kullanılabilir -->
+
+    <script>
+        /* ================= GAME LOGIC & STATE ================= */
+        let savedSize = localStorage.getItem('blockPuzzleSize');
+        let BOARD_SIZE = savedSize ? parseInt(savedSize) : 8;
+        let board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(0));
+        let cellElements = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null)); // DOM Cache
+        let score = 0;
+        let bestScore = localStorage.getItem(`blockPuzzleBestScore_${BOARD_SIZE}`) || 0;
+        let comboCount = 0; // Arka arkaya temizleme sayacı
+
+        let soundEnabled = localStorage.getItem('blockPuzzleSound') !== 'false';
+        let vibrateEnabled = localStorage.getItem('blockPuzzleVibrate') !== 'false';
+
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    audioCtx = new AudioContext();
+                }
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            if (type === 'drop') {
+                // Daha organik ve yumuşak bir "tok" ahşap blok/taş oturma sesi
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(250, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.08);
+
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.15);
+
+            } else if (type === 'clear') {
+                // Rahatlatıcı, su yüzeyinde seken damla / cam çanı gibi ("ethereal") arpej
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 (Majör pentatonik)
+                
+                notes.forEach((freq, index) => {
+                    const osc = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                    
+                    const startTime = audioCtx.currentTime + (index * 0.08);
+                    const duration = 0.6;
+                    
+                    gainNode.gain.setValueAtTime(0, startTime);
+                    gainNode.gain.linearRampToValueAtTime(0.15, startTime + 0.02);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                    
+                    osc.start(startTime);
+                    osc.stop(startTime + duration + 0.1);
+                });
+
+            } else if (type === 'combo') {
+                // Enerjik, yükselen, hızlı bir arpej (Combo!)
+                const notes = [392.00, 523.25, 659.25, 783.99, 1046.50, 1318.51]; // G4, C5, E5, G5, C6, E6
+                
+                notes.forEach((freq, index) => {
+                    const osc = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    osc.type = 'triangle'; // Daha parlak ve enerjik
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                    
+                    const startTime = audioCtx.currentTime + (index * 0.06);
+                    const duration = 0.4;
+                    
+                    gainNode.gain.setValueAtTime(0, startTime);
+                    gainNode.gain.linearRampToValueAtTime(0.2, startTime + 0.02);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                    
+                    osc.start(startTime);
+                    osc.stop(startTime + duration + 0.1);
+                });
+
+            } else if (type === 'gameover') {
+                // Kaybetme sesi: Çatırdama (tırtıklı) yapmaması için çok pürüzsüz ve yavaş sönümlenen bir akor
+                const noteFreqs = [220.00, 261.63, 329.63]; // A3, C4, E4
+                
+                noteFreqs.forEach((freq, index) => {
+                    const osc = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    osc.type = 'sine'; // Pürüzsüz dalga
+                    osc.frequency.value = freq;
+                    
+                    const now = audioCtx.currentTime;
+                    const startTime = now + (index * 0.15); // Akor notaları art arda girsin
+                    
+                    gainNode.gain.setValueAtTime(0, startTime);
+                    // Gain değerini düşük tuttuk (0.1) ki clipping/tırtıklanma olmasın
+                    gainNode.gain.linearRampToValueAtTime(0.1, startTime + 0.5);
+                    // setTargetAtTime ile pürüzsüz bir doğal sönümleme
+                    gainNode.gain.setTargetAtTime(0, startTime + 0.5, 0.6);
+                    
+                    osc.start(startTime);
+                    osc.stop(startTime + 3.5);
+                });
+            }
+        }
+
+        // Renk paleti class indexleri (1-8 arası)
+        const COLORS = [1, 2, 3, 4, 5, 6, 7, 8];
+
+        // Şekil veritabanı (1'ler blok, 0'lar boşluk)
+        const SHAPES_DATA = [
+            // 1x1
+            [[1]],
+            // 2x2
+            [[1, 1], [1, 1]],
+            // 3x3
+            [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+            // Çizgiler (Yatay ve Dikey)
+            [[1, 1]], [[1], [1]],
+            [[1, 1, 1]], [[1], [1], [1]],
+            [[1, 1, 1, 1]], [[1], [1], [1], [1]],
+            [[1, 1, 1, 1, 1]], [[1], [1], [1], [1], [1]],
+            // L Şekilleri (Küçük)
+            [[1, 0], [1, 1]], [[0, 1], [1, 1]], [[1, 1], [1, 0]], [[1, 1], [0, 1]],
+            // L Şekilleri (Büyük)
+            [[1, 0, 0], [1, 0, 0], [1, 1, 1]], [[0, 0, 1], [0, 0, 1], [1, 1, 1]], [[1, 1, 1], [1, 0, 0], [1, 0, 0]], [[1, 1, 1], [0, 0, 1], [0, 0, 1]],
+            // L Şekilleri (3x2 ve 2x3)
+            [[1, 0], [1, 0], [1, 1]], [[0, 1], [0, 1], [1, 1]], [[1, 1], [1, 0], [1, 0]], [[1, 1], [0, 1], [0, 1]],
+            [[1, 1, 1], [1, 0, 0]], [[1, 1, 1], [0, 0, 1]], [[1, 0, 0], [1, 1, 1]], [[0, 0, 1], [1, 1, 1]],
+            // T Şekli
+            [[1, 1, 1], [0, 1, 0]], [[0, 1, 0], [1, 1, 1]], [[1, 0], [1, 1], [1, 0]], [[0, 1], [1, 1], [0, 1]],
+            // Çapraz/Merdiven
+            [[1, 1, 0], [0, 1, 1]], [[0, 1, 1], [1, 1, 0]], [[0, 1], [1, 1], [1, 0]], [[1, 0], [1, 1], [0, 1]],
+            // Tam Çapraz (3'lü Nokta)
+            [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[0, 0, 1], [0, 1, 0], [1, 0, 0]]
+        ];
+
+        let currentShapes = [null, null, null]; // O an alt tarafta bulunan 3 blok.
+
+        // DOM Elements
+        const boardEl = document.getElementById('board');
+        const scoreEl = document.getElementById('score');
+        const bestScoreEl = document.getElementById('best-score');
+        const themeSelector = document.getElementById('theme-selector');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const finalScoreEl = document.getElementById('final-score');
+        const restartBtn = document.getElementById('restart-btn');
+        const comboDisplayEl = document.getElementById('combo-display');
+        const soundBtn = document.getElementById('toggle-sound');
+        const vibrateBtn = document.getElementById('toggle-vibrate');
+
+        function updateBtnVisuals() {
+            if (soundEnabled) {
+                soundBtn.innerText = '🔊';
+                soundBtn.classList.remove('disabled');
+            } else {
+                soundBtn.innerText = '🔇';
+                soundBtn.classList.add('disabled');
+            }
+            if (vibrateEnabled) {
+                vibrateBtn.innerText = '📳';
+                vibrateBtn.classList.remove('disabled');
+            } else {
+                vibrateBtn.innerText = '📴';
+                vibrateBtn.classList.add('disabled');
+            }
+        }
+
+        /* ================= INITIALIZATION ================= */
+        function init() {
+            updateBtnVisuals();
+            
+            // Sağ tık ve basılı tutma panellerini (context menu) engelleme (Android APK için)
+            window.addEventListener('contextmenu', e => e.preventDefault());
+
+            // Mobil cihazlarda AudioContext'in ilk dokunuşla uyanması için optimizasyon
+            const unlockAudio = () => {
+                if (soundEnabled) {
+                    initAudio();
+                    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                }
+            };
+            document.body.addEventListener('touchstart', unlockAudio, { once: true });
+            document.body.addEventListener('mousedown', unlockAudio, { once: true });
+
+            soundBtn.addEventListener('click', () => {
+                soundEnabled = !soundEnabled;
+                localStorage.setItem('blockPuzzleSound', soundEnabled);
+                updateBtnVisuals();
+                if (soundEnabled) initAudio();
+            });
+            vibrateBtn.addEventListener('click', () => {
+                vibrateEnabled = !vibrateEnabled;
+                localStorage.setItem('blockPuzzleVibrate', vibrateEnabled);
+                updateBtnVisuals();
+                if (vibrateEnabled && navigator.vibrate) navigator.vibrate(10);
+            });
+
+            bestScoreEl.innerText = bestScore;
+
+            // Temayı ayarla
+            const savedTheme = localStorage.getItem('blockPuzzleTheme') || 'neon';
+            document.body.setAttribute('data-theme', savedTheme);
+            themeSelector.value = savedTheme;
+
+            themeSelector.addEventListener('change', (e) => {
+                document.body.setAttribute('data-theme', e.target.value);
+                localStorage.setItem('blockPuzzleTheme', e.target.value);
+            });
+
+            // Tahta boyutunu ayarla
+            const sizeSelector = document.getElementById('board-size-selector');
+            sizeSelector.value = BOARD_SIZE;
+            sizeSelector.addEventListener('change', (e) => {
+                BOARD_SIZE = parseInt(e.target.value);
+                localStorage.setItem('blockPuzzleSize', BOARD_SIZE);
+                bestScore = localStorage.getItem(`blockPuzzleBestScore_${BOARD_SIZE}`) || 0;
+                bestScoreEl.innerText = bestScore;
+                restartGame();
+            });
+
+            restartBtn.addEventListener('click', restartGame);
+
+            // --- GERİ TUŞU (BACK BUTTON) KONTROLÜ ---
+            // 1. Browser/WebView History API yöntemi (Genel mobil tarayıcılar ve APK kapsayıcıları için)
+            history.pushState({ page: 'game' }, null, '');
+            window.addEventListener('popstate', (e) => {
+                // Geri dönüldüğünde hemen çıkmasın diye tekrar ileri atıyoruz (History API hack)
+                history.pushState({ page: 'game' }, null, '');
+                showExitConfirmation();
+            });
+            // 2. Cordova/Capacitor yöntemi (APK native sarmalayıcılar için)
+            document.addEventListener('backbutton', (e) => {
+                e.preventDefault();
+                showExitConfirmation();
+            }, false);
+
+            document.getElementById('exit-no-btn').addEventListener('click', () => {
+                document.getElementById('exit-modal').style.display = 'none';
+                modalOverlay.classList.remove('active');
+            });
+
+            document.getElementById('exit-yes-btn').addEventListener('click', () => {
+                if (navigator.app && navigator.app.exitApp) {
+                    navigator.app.exitApp(); // Cordova vb.
+                } else {
+                    window.close(); // PWA vs.
+                    history.go(-2); 
+                }
+            });
+
+            createBoard();
+            generateShapes();
+        }
+
+        function createBoard() {
+            boardEl.innerHTML = '';
+            boardEl.style.gridTemplateColumns = `repeat(${BOARD_SIZE}, 1fr)`;
+            boardEl.style.gridTemplateRows = `repeat(${BOARD_SIZE}, 1fr)`;
+            cellElements = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    boardEl.appendChild(cell);
+                    cellElements[r][c] = cell;
+                }
+            }
+        }
+
+        /* ================= SHAPE GENERATION ================= */
+        function getRandomShape() {
+            const shapeProto = SHAPES_DATA[Math.floor(Math.random() * SHAPES_DATA.length)];
+            const colorId = COLORS[Math.floor(Math.random() * COLORS.length)];
+            return {
+                matrix: shapeProto,
+                colorId: colorId
+            };
+        }
+
+        function generateShapes() {
+            let populated = 0;
+            for (let i = 0; i < 3; i++) {
+                if (!currentShapes[i]) {
+                    currentShapes[i] = getRandomShape();
+                    renderShape(i, currentShapes[i]);
+                }
+                if (currentShapes[i]) populated++;
+            }
+            if (populated > 0) {
+                updatePlayableStatus();
+            }
+        }
+
+        function renderShape(slotIndex, shapeObj) {
+            const slot = document.getElementById(`slot-${slotIndex}`);
+            slot.innerHTML = '';
+
+            if (!shapeObj) return;
+
+            const shapeEl = document.createElement('div');
+            shapeEl.classList.add('shape');
+            shapeEl.dataset.slot = slotIndex;
+
+            const rows = shapeObj.matrix.length;
+            const cols = shapeObj.matrix[0].length;
+
+            shapeEl.style.gridTemplateRows = `repeat(${rows}, 20px)`;
+            shapeEl.style.gridTemplateColumns = `repeat(${cols}, 20px)`;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const block = document.createElement('div');
+                    if (shapeObj.matrix[r][c] === 1) {
+                        block.classList.add('shape-block');
+                        block.style.backgroundColor = `var(--block-color-${shapeObj.colorId})`;
+                    }
+                    shapeEl.appendChild(block);
+                }
+            }
+
+            // Etkileşim Listener'ları
+            shapeEl.addEventListener('touchstart', handleDragStart, { passive: false });
+            shapeEl.addEventListener('mousedown', handleDragStart);
+            shapeEl.addEventListener('contextmenu', e => e.preventDefault());
+
+            slot.appendChild(shapeEl);
+        }
+
+        /* ================= DRAG & DROP ================= */
+        let activeShapeEl = null;
+        let activeShapeData = null;
+        let activeSlotIndex = -1;
+        let activeOffsetX = 0;
+        let activeOffsetY = 0;
+        let currentHoverCell = null; // {r, c}
+        let isDragging = false;
+        let dragX = 0;
+        let dragY = 0;
+        let activeShapeWidth = 0;
+        let activeShapeHeight = 0;
+        let lastHoverPosStr = ""; // Animasyonları azaltmak için
+        let cachedBoardRect = null; // Performans: Layout thrashing'i önlemek için
+        let cachedCellSize = 0; // 120hz akıcılık için
+        let dragAnimFrame = null;
+
+        function handleDragStart(e) {
+            if (activeShapeEl) return; // Çoklu parmak / double tap engeli
+            const targetShape = e.currentTarget;
+            if (targetShape.classList.contains('unplayable')) return;
+
+            e.preventDefault();
+            const touch = e.type.includes('touch') ? e.touches[0] : e;
+
+            activeSlotIndex = parseInt(targetShape.dataset.slot);
+            activeShapeData = currentShapes[activeSlotIndex];
+
+            // Calculate cellSize to scale the dragging shape correctly
+            cachedBoardRect = boardEl.getBoundingClientRect();
+            cachedCellSize = (cachedBoardRect.width - (BOARD_SIZE - 1) * 2 - 8) / BOARD_SIZE;
+            const boardRect = cachedBoardRect;
+            const cellSize = cachedCellSize;
+
+            // Clone to drag
+            activeShapeEl = targetShape.cloneNode(true);
+            activeShapeEl.classList.add('shape-active');
+
+            const rows = activeShapeData.matrix.length;
+            const cols = activeShapeData.matrix[0].length;
+            activeShapeEl.style.gridTemplateRows = `repeat(${rows}, ${cellSize}px)`;
+            activeShapeEl.style.gridTemplateColumns = `repeat(${cols}, ${cellSize}px)`;
+            
+            // Performans için GPU ivmelendirmesini ayarlıyoruz, left-top yerine translate3d
+            activeShapeEl.style.left = '0px';
+            activeShapeEl.style.top = '0px';
+            activeShapeEl.style.willChange = 'transform'; 
+            activeShapeEl.style.transition = 'none'; // Sürüklerken CSS geçiş gecikmesini iptal et
+
+            document.body.appendChild(activeShapeEl);
+
+            // Shape boyutlarını baştan hesaplıyoruz ki her frame'de hesaplanmasın
+            activeShapeWidth = cols * cellSize + (cols - 1) * 2;
+            activeShapeHeight = rows * cellSize + (rows - 1) * 2;
+
+            // Hide original
+            targetShape.style.opacity = '0';
+
+            // Animasyon başlangıcı
+            isDragging = true;
+            dragX = touch.clientX;
+            dragY = touch.clientY;
+            lastHoverPosStr = "";
+            activeShapeEl.style.transform = `translate3d(${dragX - (activeShapeWidth / 2)}px, ${dragY - (activeShapeHeight * 1.2)}px, 0)`;
+
+            if (dragAnimFrame) cancelAnimationFrame(dragAnimFrame);
+            dragAnimFrame = requestAnimationFrame(dragLoop);
+
+            document.addEventListener('touchmove', handleDragMove, { passive: false });
+            document.addEventListener('touchend', handleDragEnd);
+            document.addEventListener('touchcancel', handleDragEnd);
+            document.addEventListener('mousemove', handleDragMove);
+            document.addEventListener('mouseup', handleDragEnd);
+
+            // Vibrate slightly
+            if (vibrateEnabled && navigator.vibrate) navigator.vibrate(10);
+        }
+
+        function handleDragMove(e) {
+            if (!activeShapeEl) return;
+            if (e.cancelable) e.preventDefault(); // Warningleri en aza indirmek için cancelable kontrolü
+            const touch = e.type.includes('touch') ? e.touches[0] : e;
+            dragX = touch.clientX;
+            dragY = touch.clientY;
+            
+            // RAF beklemeden pozisyonu anında güncelle (giriş gecikmesini önler ve parmak takibini hızlandırır)
+            activeShapeEl.style.transform = `translate3d(${dragX - (activeShapeWidth / 2)}px, ${dragY - (activeShapeHeight * 1.2)}px, 0)`;
+        }
+
+        function dragLoop() {
+            if (!isDragging || !activeShapeEl) return;
+
+            // GPU ile pozisyonlama yapıyoruz, touchmove içinde halledildiği için sadece hover kontrolü kaldı
+
+            // Hücre üstünde gezme (Sadece pozisyon değiştiğinde render et)
+            const hoverPos = getHoverPosition(dragX, dragY);
+            const hoverPosStr = hoverPos ? `${hoverPos.r},${hoverPos.c}` : "null";
+            
+            if (hoverPosStr !== lastHoverPosStr) {
+                updateHoverVisuals(hoverPos);
+                lastHoverPosStr = hoverPosStr;
+            }
+
+            dragAnimFrame = requestAnimationFrame(dragLoop);
+        }
+
+        // Returns the row,col of the top-left cell on the board under the active shape
+        function getHoverPosition(pointerX, pointerY) {
+            if (!cachedBoardRect) return null;
+            const boardRect = cachedBoardRect;
+            const cellSize = cachedCellSize;
+
+            // Elementin transform'dan dolayı sol üst köşesi nerede?
+            // Önceden hesaplanmış genişlik/yükseklik değerlerini kullanarak hesap yükünü azaltıyoruz
+            const shapeTop = pointerY - (activeShapeHeight * 1.2);
+            const shapeLeft = pointerX - (activeShapeWidth / 2);
+
+            // Board içi kalıyor mu kontrolü (Shape in herhangi bir kısmı board grid'ine denk geliyorsa)
+            // Ortasını baz alalım ilk hücrenin
+            const firstCellX = shapeLeft + (cellSize / 2);
+            const firstCellY = shapeTop + (cellSize / 2);
+
+            if (firstCellX < boardRect.left || firstCellX > boardRect.right ||
+                firstCellY < boardRect.top || firstCellY > boardRect.bottom) {
+                return null;
+            }
+
+            const col = Math.floor((firstCellX - boardRect.left - 4) / (cellSize + 2));
+            const row = Math.floor((firstCellY - boardRect.top - 4) / (cellSize + 2));
+
+            return { r: row, c: col };
+        }
+
+        function updateHoverVisuals(pos) {
+            // Reset old hover
+            document.querySelectorAll('.hover-preview').forEach(el => {
+                el.classList.remove('hover-preview');
+                el.style.backgroundColor = '';
+            });
+            document.querySelectorAll('.will-clear-preview').forEach(el => {
+                el.classList.remove('will-clear-preview');
+            });
+
+            currentHoverCell = null;
+
+            if (!pos) return;
+
+            // Check if valid
+            if (canPlace(activeShapeData.matrix, pos.r, pos.c)) {
+                currentHoverCell = pos;
+
+                // Simulate placement on a temp board
+                let tempBoard = board.map(row => [...row]);
+                for (let r = 0; r < activeShapeData.matrix.length; r++) {
+                    for (let c = 0; c < activeShapeData.matrix[0].length; c++) {
+                        if (activeShapeData.matrix[r][c] === 1) {
+                            tempBoard[pos.r + r][pos.c + c] = 1;
+                        }
+                    }
+                }
+
+                // Identify if any rows/cols will clear
+                let willClearRows = [];
+                let willClearCols = [];
+                for (let r = 0; r < BOARD_SIZE; r++) {
+                    if (tempBoard[r].every(val => val !== 0)) willClearRows.push(r);
+                }
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    let colFull = true;
+                    for (let r = 0; r < BOARD_SIZE; r++) {
+                        if (tempBoard[r][c] === 0) colFull = false;
+                    }
+                    if (colFull) willClearCols.push(c);
+                }
+
+                // Apply dynamic CSS classes for hover and clear preview
+                for (let r = 0; r < BOARD_SIZE; r++) {
+                    for (let c = 0; c < BOARD_SIZE; c++) {
+                        const cellEl = getCellEl(r, c);
+                        if (!cellEl) continue;
+
+                        let isShapePart = false;
+                        if (r >= pos.r && r < pos.r + activeShapeData.matrix.length &&
+                            c >= pos.c && c < pos.c + activeShapeData.matrix[0].length) {
+                            if (activeShapeData.matrix[r - pos.r][c - pos.c] === 1) {
+                                isShapePart = true;
+                            }
+                        }
+
+                        let isClearing = willClearRows.includes(r) || willClearCols.includes(c);
+
+                        if (isShapePart) {
+                            cellEl.classList.add('hover-preview');
+                            cellEl.style.backgroundColor = `var(--block-color-${activeShapeData.colorId})`;
+                        }
+                        if (isClearing) {
+                            cellEl.classList.add('will-clear-preview');
+                        }
+                    }
+                }
+            }
+        }
+
+        function handleDragEnd(e) {
+            if (!activeShapeEl) return;
+
+            isDragging = false; // Animasyon döngüsünü durdurur
+            if (dragAnimFrame) {
+                cancelAnimationFrame(dragAnimFrame);
+                dragAnimFrame = null;
+            }
+
+            document.removeEventListener('touchmove', handleDragMove);
+            document.removeEventListener('touchend', handleDragEnd);
+            document.removeEventListener('touchcancel', handleDragEnd);
+            document.removeEventListener('mousemove', handleDragMove);
+            document.removeEventListener('mouseup', handleDragEnd);
+
+            const originalShapeEl = document.querySelector(`.shape[data-slot="${activeSlotIndex}"]`);
+
+            if (currentHoverCell) {
+                // Pre-clean previews
+                document.querySelectorAll('.hover-preview').forEach(el => {
+                    el.classList.remove('hover-preview');
+                    el.style.backgroundColor = '';
+                });
+                document.querySelectorAll('.will-clear-preview').forEach(el => {
+                    el.classList.remove('will-clear-preview');
+                });
+
+                // Tahtaya yerleştir!
+                placeShape(activeShapeData, currentHoverCell.r, currentHoverCell.c);
+                currentShapes[activeSlotIndex] = null;
+                document.getElementById(`slot-${activeSlotIndex}`).innerHTML = '';
+
+                checkLines();
+
+                // Eğer slotlar boşaldıysa yenilerini oluştur
+                if (currentShapes.every(s => s === null)) {
+                    generateShapes();
+                } else {
+                    updatePlayableStatus();
+                }
+
+                if (vibrateEnabled && navigator.vibrate) navigator.vibrate(20);
+                playSound('drop');
+            } else {
+                // Geri dön
+                originalShapeEl.style.opacity = '1';
+                // Reset hover
+                document.querySelectorAll('.hover-preview').forEach(el => {
+                    el.classList.remove('hover-preview');
+                    el.style.backgroundColor = '';
+                });
+                document.querySelectorAll('.will-clear-preview').forEach(el => {
+                    el.classList.remove('will-clear-preview');
+                });
+            }
+
+            activeShapeEl.remove();
+            activeShapeEl = null;
+            activeShapeData = null;
+            activeSlotIndex = -1;
+            currentHoverCell = null;
+            cachedBoardRect = null;
+        }
+
+        /* ================= GAME RULES ================= */
+        function canPlace(matrix, startRow, startCol) {
+            for (let r = 0; r < matrix.length; r++) {
+                for (let c = 0; c < matrix[0].length; c++) {
+                    if (matrix[r][c] === 1) {
+                        let br = startRow + r;
+                        let bc = startCol + c;
+                        if (br < 0 || br >= BOARD_SIZE || bc < 0 || bc >= BOARD_SIZE) {
+                            return false; // Out of bounds
+                        }
+                        if (board[br][bc] !== 0) {
+                            return false; // Collision
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        function placeShape(shapeObj, startRow, startCol) {
+            let blocksPlaced = 0;
+            for (let r = 0; r < shapeObj.matrix.length; r++) {
+                for (let c = 0; c < shapeObj.matrix[0].length; c++) {
+                    if (shapeObj.matrix[r][c] === 1) {
+                        let br = startRow + r;
+                        let bc = startCol + c;
+                        board[br][bc] = shapeObj.colorId;
+                        const cellEl = getCellEl(br, bc);
+                        cellEl.classList.add('filled');
+                        cellEl.style.backgroundColor = `var(--block-color-${shapeObj.colorId})`;
+                        blocksPlaced++;
+                    }
+                }
+            }
+            addScore(blocksPlaced * 10); // Her yerleştirilen blok 10 puan
+        }
+
+        function checkLines() {
+            let rowsToClear = [];
+            let colsToClear = [];
+
+            // Satır kontrolü
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                let full = true;
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (board[r][c] === 0) full = false;
+                }
+                if (full) rowsToClear.push(r);
+            }
+
+            // Sütun kontrolü
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                let full = true;
+                for (let r = 0; r < BOARD_SIZE; r++) {
+                    if (board[r][c] === 0) full = false;
+                }
+                if (full) colsToClear.push(c);
+            }
+
+            // Temizleme işlemi
+            if (rowsToClear.length > 0 || colsToClear.length > 0) {
+                let cellsToClear = new Set();
+
+                rowsToClear.forEach(r => {
+                    for (let c = 0; c < BOARD_SIZE; c++) cellsToClear.add(`${r},${c}`);
+                });
+
+                colsToClear.forEach(c => {
+                    for (let r = 0; r < BOARD_SIZE; r++) cellsToClear.add(`${r},${c}`);
+                });
+
+                cellsToClear.forEach(coords => {
+                    const [r, c] = coords.split(',').map(Number);
+                    board[r][c] = 0;
+                    const cellEl = getCellEl(r, c);
+                    cellEl.classList.add('clearing');
+                    // Animasyon bitince temizle
+                    setTimeout(() => {
+                        cellEl.classList.remove('clearing', 'filled');
+                        cellEl.style.backgroundColor = '';
+                    }, 300);
+                });
+
+                // Skor hesabı (Artırılmış)
+                const linesCleared = rowsToClear.length + colsToClear.length;
+                
+                // Ardışık tur kombosu veya aynı anda çoklu çizgi temizleme kombo sayacını günceller
+                comboCount += linesCleared;
+                
+                let lineScore = linesCleared * 100;
+
+                // Birden çok satır aynı anda temizlendiyse baz puan artışı
+                if (linesCleared > 1) {
+                    lineScore *= linesCleared; // 2 çizgi = 400, 3 = 900
+                }
+
+                if (comboCount > 1) {
+                    lineScore += (comboCount * 50); // Sabit kombo bonusu
+                    lineScore *= 1.5; // Toplam puana ekstra %50 kombo katı
+                    lineScore = Math.floor(lineScore);
+                    showComboText(comboCount);
+                }
+
+                addScore(lineScore);
+                if (comboCount > 1) {
+                    playSound('combo');
+                } else {
+                    playSound('clear');
+                }
+                if (vibrateEnabled && navigator.vibrate) navigator.vibrate([50, 50, 50]);
+            } else {
+                comboCount = 0; // Temizleme yoksa komboyu sıfırla
+            }
+        }
+
+        function showComboText(comboMultiplier) {
+            comboDisplayEl.innerText = `Kombo x${comboMultiplier}!`;
+            comboDisplayEl.classList.add('show');
+            setTimeout(() => {
+                comboDisplayEl.classList.remove('show');
+            }, 1000);
+        }
+
+        function updatePlayableStatus() {
+            let canMakeMove = false;
+
+            for (let i = 0; i < 3; i++) {
+                const shapeObj = currentShapes[i];
+                if (!shapeObj) continue;
+
+                let shapeCanBePlaced = false;
+                // Bu shape tahtaya sığıyor mu?
+                for (let r = 0; r < BOARD_SIZE; r++) {
+                    for (let c = 0; c < BOARD_SIZE; c++) {
+                        if (canPlace(shapeObj.matrix, r, c)) {
+                            shapeCanBePlaced = true;
+                            break;
+                        }
+                    }
+                    if (shapeCanBePlaced) break;
+                }
+
+                // Ekranda güncelleyelim
+                const shapeEl = document.querySelector(`.shape[data-slot="${i}"]`);
+                if (shapeEl) {
+                    if (!shapeCanBePlaced) {
+                        shapeEl.classList.add('unplayable');
+                    } else {
+                        shapeEl.classList.remove('unplayable');
+                    }
+                }
+
+                if (shapeCanBePlaced) {
+                    canMakeMove = true;
+                }
+            }
+
+            // Aktif olarak şekil var ama yerleştirilemiyorsa
+            if (currentShapes.some(s => s !== null) && !canMakeMove) {
+                gameOver();
+            }
+        }
+
+        function showExitConfirmation() {
+            document.getElementById('game-over-modal').style.display = 'none';
+            document.getElementById('exit-modal').style.display = 'block';
+            modalOverlay.classList.add('active');
+        }
+
+        function gameOver() {
+            playSound('gameover');
+            finalScoreEl.innerText = score;
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem(`blockPuzzleBestScore_${BOARD_SIZE}`, bestScore);
+                bestScoreEl.innerText = bestScore;
+            }
+            document.getElementById('exit-modal').style.display = 'none';
+            document.getElementById('game-over-modal').style.display = 'block';
+            modalOverlay.classList.add('active');
+        }
+
+        function restartGame() {
+            board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(0));
+            score = 0;
+            comboCount = 0; // Kombo sayacını sıfırla
+            scoreEl.innerText = score;
+            createBoard();
+            currentShapes = [null, null, null];
+
+            // clear shape slots
+            for (let i = 0; i < 3; i++) document.getElementById(`slot-${i}`).innerHTML = '';
+
+            generateShapes();
+            modalOverlay.classList.remove('active');
+        }
+
+        function getCellEl(r, c) {
+            return cellElements[r][c] || document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+        }
+
+        function addScore(points) {
+            score += points;
+            scoreEl.innerText = score;
+
+            // Bump animasyonu
+            scoreEl.classList.remove('bump');
+            void scoreEl.offsetWidth; // trigger reflow
+            scoreEl.classList.add('bump');
+            setTimeout(() => scoreEl.classList.remove('bump'), 200);
+        }
+
+        /* ================= START ================= */
+        window.addEventListener('load', init);
+
+    </script>
+</body>
+
+</html>
