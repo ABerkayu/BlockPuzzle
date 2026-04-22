@@ -37,29 +37,31 @@
             /* Mor */
             --block-color-8: #ec4899;
             /* Pembe */
+            --clear-flash-color: #ffffff; /* Neon için parlama */
         }
 
         [data-theme="pastel"] {
-            --bg-color: #f2efe9;
-            /* Patlama efektinin belli olması için hafif daha doygun tonlar ve daha belirgin arkaplan */
-            --bg-gradient: linear-gradient(-45deg, #f4efe9, #f7e6e6, #f7ecd4, #edf0d5, #f4efe9);
-            --container-bg: rgba(255, 255, 255, 0.7);
-            --grid-bg: rgba(228, 222, 216, 0.85);
-            --cell-bg: rgba(245, 240, 235, 0.9);
-            --cell-border: rgba(0, 0, 0, 0.05);
-            --text-color: #4a4555;
-            --accent-color: #e57373;
-            --shadow-color: rgba(0, 0, 0, 0.08);
-            --panel-bg: rgba(255, 255, 255, 0.95);
+            --bg-color: #fdfbf7;
+            /* Yeni ve daha yumuşak, modern pastel renkler */
+            --bg-gradient: linear-gradient(-45deg, #fdfbf7, #fdfbf7, #f4f1ea, #f4f1ea, #fdfbf7);
+            --container-bg: rgba(255, 255, 255, 0.85);
+            --grid-bg: rgba(230, 227, 220, 0.8);
+            --cell-bg: rgba(250, 248, 245, 0.95);
+            --cell-border: rgba(0, 0, 0, 0.04);
+            --text-color: #5c556b;
+            --accent-color: #ff9a9e;
+            --shadow-color: rgba(0, 0, 0, 0.06);
+            --panel-bg: rgba(255, 255, 255, 0.98);
 
-            --block-color-1: #ff8a8a;
-            --block-color-2: #ffb570;
-            --block-color-3: #fadd5c;
-            --block-color-4: #8de397;
-            --block-color-5: #7bdeeb;
-            --block-color-6: #8daeff;
-            --block-color-7: #b39cf5;
-            --block-color-8: #f095e4;
+            --block-color-1: #ffadad;
+            --block-color-2: #ffd6a5;
+            --block-color-3: #fdffb6;
+            --block-color-4: #caffbf;
+            --block-color-5: #9bf6ff;
+            --block-color-6: #a0c4ff;
+            --block-color-7: #bdb2ff;
+            --block-color-8: #ffc6ff;
+            --clear-flash-color: #ff9a9e; /* Pastel için belirgin parlama */
         }
 
         [data-theme="retro"] {
@@ -83,6 +85,7 @@
             --block-color-6: #e8bf6a;
             --block-color-7: #808080;
             --block-color-8: #a5c261;
+            --clear-flash-color: #e8bf6a; /* Retro için parlama */
         }
 
         * {
@@ -248,18 +251,19 @@
         @keyframes previewPulse {
             0% {
                 filter: brightness(1.2);
-                box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.4);
+                box-shadow: inset 0 0 10px var(--clear-flash-color);
             }
 
             100% {
-                filter: brightness(1.8) sepia(0.3);
+                filter: brightness(1.5);
                 transform: scale(0.95);
-                box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.9);
+                box-shadow: inset 0 0 20px var(--clear-flash-color);
             }
         }
 
         .cell.clearing {
             animation: clearAnim 0.3s forwards;
+            z-index: 10;
         }
 
         @keyframes clearAnim {
@@ -270,8 +274,10 @@
 
             50% {
                 transform: scale(1.2);
-                opacity: 0.5;
-                filter: brightness(2);
+                opacity: 0.9;
+                background-color: var(--clear-flash-color) !important;
+                box-shadow: 0 0 20px var(--clear-flash-color);
+                filter: brightness(1.2);
             }
 
             100% {
@@ -280,7 +286,7 @@
             }
         }
 
-        #combo-display {
+        #combo-display, #record-display {
             position: fixed;
             top: 25%;
             left: 50%;
@@ -293,9 +299,18 @@
             pointer-events: none;
             z-index: 1000;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            white-space: pre-line;
+            text-align: center;
         }
 
-        #combo-display.show {
+        #record-display {
+            top: 15%;
+            color: #facc15;
+            font-size: 2.5rem;
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(250, 204, 21, 0.6);
+        }
+
+        #combo-display.show, #record-display.show {
             transform: translate(-50%, -50%) scale(1);
             opacity: 1;
         }
@@ -465,10 +480,11 @@
     </div>
 
     <div id="combo-display">Combo x2!</div>
+    <div id="record-display">YENİ REKOR!</div>
 
     <div id="modal-overlay">
         <div id="game-over-modal" class="modal-card" style="display:none;">
-            <h2>Oyun Bitti!</h2>
+            <h2 id="game-over-title">Oyun Bitti!</h2>
             <p>Skorunuz: <b id="final-score">0</b></p>
             <button id="restart-btn" class="action-btn">Tekrar Oyna</button>
         </div>
@@ -492,7 +508,9 @@
         let cellElements = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null)); // DOM Cache
         let score = 0;
         let bestScore = localStorage.getItem(`blockPuzzleBestScore_${BOARD_SIZE}`) || 0;
+        let initialBestScore = bestScore;
         let comboCount = 0; // Arka arkaya temizleme sayacı
+        let newRecordTriggered = false;
 
         let soundEnabled = localStorage.getItem('blockPuzzleSound') !== 'false';
         let vibrateEnabled = localStorage.getItem('blockPuzzleVibrate') !== 'false';
@@ -616,14 +634,14 @@
         // Şekil veritabanı (1'ler blok, 0'lar boşluk)
         const SHAPES_DATA = [
             // 1x1
-            [[1]],
+            [[1]], [[1]], [[1]], // Kolaylık için basit şekilleri artırdık
             // 2x2
-            [[1, 1], [1, 1]],
+            [[1, 1], [1, 1]], [[1, 1], [1, 1]],
             // 3x3
             [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
             // Çizgiler (Yatay ve Dikey)
-            [[1, 1]], [[1], [1]],
-            [[1, 1, 1]], [[1], [1], [1]],
+            [[1, 1]], [[1], [1]], [[1, 1]], [[1], [1]],
+            [[1, 1, 1]], [[1], [1], [1]], [[1, 1, 1]], [[1], [1], [1]],
             [[1, 1, 1, 1]], [[1], [1], [1], [1]],
             [[1, 1, 1, 1, 1]], [[1], [1], [1], [1], [1]],
             // L Şekilleri (Küçük)
@@ -637,6 +655,8 @@
             [[1, 1, 1], [0, 1, 0]], [[0, 1, 0], [1, 1, 1]], [[1, 0], [1, 1], [1, 0]], [[0, 1], [1, 1], [0, 1]],
             // Çapraz/Merdiven
             [[1, 1, 0], [0, 1, 1]], [[0, 1, 1], [1, 1, 0]], [[0, 1], [1, 1], [1, 0]], [[1, 0], [1, 1], [0, 1]],
+            // 2'li Çapraz Bloklar
+            [[1, 0], [0, 1]], [[0, 1], [1, 0]],
             // Tam Çapraz (3'lü Nokta)
             [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[0, 0, 1], [0, 1, 0], [1, 0, 0]]
         ];
@@ -652,6 +672,7 @@
         const finalScoreEl = document.getElementById('final-score');
         const restartBtn = document.getElementById('restart-btn');
         const comboDisplayEl = document.getElementById('combo-display');
+        const recordDisplayEl = document.getElementById('record-display');
         const soundBtn = document.getElementById('toggle-sound');
         const vibrateBtn = document.getElementById('toggle-vibrate');
 
@@ -1217,12 +1238,23 @@
             }
         }
 
+        const MOTIVATION_WORDS = ["Harika!", "Mükemmel!", "İnanılmaz!", "Şahane!", "Süper!", "Efsane!"];
+
         function showComboText(comboMultiplier) {
-            comboDisplayEl.innerText = `Kombo x${comboMultiplier}!`;
+            const word = MOTIVATION_WORDS[Math.floor(Math.random() * MOTIVATION_WORDS.length)];
+            comboDisplayEl.innerHTML = `<span style="font-size: 0.6em; display: block; margin-bottom: -10px; opacity: 0.9; text-shadow: 0 2px 5px rgba(0,0,0,0.5);">${word}</span>Kombo x${comboMultiplier}!`;
             comboDisplayEl.classList.add('show');
             setTimeout(() => {
                 comboDisplayEl.classList.remove('show');
             }, 1000);
+        }
+
+        function showRecordText() {
+            recordDisplayEl.innerText = "YENİ REKOR!";
+            recordDisplayEl.classList.add('show');
+            setTimeout(() => {
+                recordDisplayEl.classList.remove('show');
+            }, 2000);
         }
 
         function updatePlayableStatus() {
@@ -1274,6 +1306,18 @@
         function gameOver() {
             playSound('gameover');
             finalScoreEl.innerText = score;
+            const gameOverTitle = document.getElementById('game-over-title');
+            
+            if (newRecordTriggered) {
+                gameOverTitle.innerText = "YENİ REKOR!";
+                gameOverTitle.style.color = "#facc15"; // Sarı altın renk
+                gameOverTitle.style.textShadow = "0 0 15px rgba(250, 204, 21, 0.6)";
+            } else {
+                gameOverTitle.innerText = "Oyun Bitti!";
+                gameOverTitle.style.color = "var(--accent-color)";
+                gameOverTitle.style.textShadow = "none";
+            }
+
             if (score > bestScore) {
                 bestScore = score;
                 localStorage.setItem(`blockPuzzleBestScore_${BOARD_SIZE}`, bestScore);
@@ -1288,6 +1332,8 @@
             board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(0));
             score = 0;
             comboCount = 0; // Kombo sayacını sıfırla
+            newRecordTriggered = false; // Rekor bayrağını sıfırla
+            initialBestScore = localStorage.getItem(`blockPuzzleBestScore_${BOARD_SIZE}`) || 0;
             scoreEl.innerText = score;
             createBoard();
             currentShapes = [null, null, null];
@@ -1312,6 +1358,18 @@
             void scoreEl.offsetWidth; // trigger reflow
             scoreEl.classList.add('bump');
             setTimeout(() => scoreEl.classList.remove('bump'), 200);
+
+            // Yeni Rekor kontrolü
+            if (initialBestScore > 0 && score > initialBestScore && !newRecordTriggered) {
+                newRecordTriggered = true;
+                showRecordText();
+                if (vibrateEnabled && navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            }
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem(`blockPuzzleBestScore_${BOARD_SIZE}`, bestScore);
+                bestScoreEl.innerText = bestScore;
+            }
         }
 
         /* ================= START ================= */
