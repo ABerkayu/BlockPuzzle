@@ -22,27 +22,18 @@
             --panel-bg: rgba(30, 41, 59, 0.8);
 
             --block-color-1: #ef4444;
-            /* Kırmızı */
             --block-color-2: #f97316;
-            /* Turuncu */
             --block-color-3: #eab308;
-            /* Sarı */
             --block-color-4: #22c55e;
-            /* Yeşil */
             --block-color-5: #06b6d4;
-            /* Turkuaz */
             --block-color-6: #3b82f6;
-            /* Mavi */
             --block-color-7: #a855f7;
-            /* Mor */
             --block-color-8: #ec4899;
-            /* Pembe */
-            --clear-flash-color: #ffffff; /* Neon için parlama */
+            --clear-flash-color: #ffffff;
         }
 
         [data-theme="pastel"] {
             --bg-color: #fdfbf7;
-            /* Yeni ve daha yumuşak, modern pastel renkler */
             --bg-gradient: linear-gradient(-45deg, #fdfbf7, #fdfbf7, #f4f1ea, #f4f1ea, #fdfbf7);
             --container-bg: rgba(255, 255, 255, 0.85);
             --grid-bg: rgba(230, 227, 220, 0.8);
@@ -61,12 +52,11 @@
             --block-color-6: #a0c4ff;
             --block-color-7: #bdb2ff;
             --block-color-8: #ffc6ff;
-            --clear-flash-color: #ff9a9e; /* Pastel için belirgin parlama */
+            --clear-flash-color: #ff9a9e;
         }
 
         [data-theme="retro"] {
             --bg-color: #2b2b2b;
-            /* Retro havası için arkaplan geçişlerine hafif sıcak/sepya kahve atıldı */
             --bg-gradient: linear-gradient(-45deg, #2b2b2b, #38322e, #3a3d40, #2b2b2b);
             --container-bg: #3c3f41;
             --grid-bg: #1a1816;
@@ -85,7 +75,7 @@
             --block-color-6: #e8bf6a;
             --block-color-7: #808080;
             --block-color-8: #a5c261;
-            --clear-flash-color: #e8bf6a; /* Retro için parlama */
+            --clear-flash-color: #e8bf6a;
         }
 
         * {
@@ -96,7 +86,6 @@
             -webkit-user-select: none;
             -webkit-touch-callout: none;
             touch-action: none !important;
-            /* Mobil tarayıcılarda pan ve scroll engeli */
         }
 
         body {
@@ -108,10 +97,8 @@
             align-items: center;
             min-height: 100vh;
             min-height: 100dvh;
-            /* Yeni nesil mobile browserlarda footer hatasını çözer */
             overflow: hidden;
             overscroll-behavior: none;
-            /* Pull-to-refresh engeli */
             transition: background 0.4s, color 0.4s;
         }
 
@@ -223,7 +210,7 @@
             width: 100%;
             max-width: 450px;
             border: 1px solid var(--cell-border);
-            transform: translateZ(0); /* GPU Acceleration */
+            transform: translateZ(0);
         }
 
         .cell {
@@ -334,13 +321,11 @@
             align-items: center;
         }
 
-        /* The drawn shape blocks */
         .shape {
             display: grid;
             gap: 2px;
             cursor: grab;
             touch-action: none;
-            /* Mobil tarayıcı sürükleme davranışını devre dışı bırak */
             transition: opacity 0.3s, filter 0.3s;
         }
 
@@ -356,7 +341,6 @@
             pointer-events: none;
             z-index: 1000;
             transform: translate(-50%, -120%);
-            /* Parmağın biraz üzerinde çıksın */
             opacity: 0.9;
             filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.5));
         }
@@ -367,7 +351,6 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        /* Game Over Modal */
         #modal-overlay {
             position: fixed;
             top: 0;
@@ -467,9 +450,7 @@
         </header>
 
         <div id="board-container">
-            <div id="board">
-                <!-- JavaScript ile 100 hücre oluşturulacak -->
-            </div>
+            <div id="board"></div>
         </div>
 
         <div id="shape-container">
@@ -498,22 +479,46 @@
         </div>
     </div>
 
-    <!-- Haptic feedback için ses eklenebilir veya navigator.vibrate kullanılabilir -->
-
     <script>
+        /* ================= SAFE STORAGE (iOS fix) ================= */
+        function storageGet(key, fallback) {
+            if (fallback === undefined) fallback = null;
+            try {
+                const val = localStorage.getItem(key);
+                return val !== null ? val : fallback;
+            } catch (e) {
+                try {
+                    const val = sessionStorage.getItem(key);
+                    return val !== null ? val : fallback;
+                } catch (e2) {
+                    return fallback;
+                }
+            }
+        }
+
+        function storageSet(key, value) {
+            try {
+                localStorage.setItem(key, value);
+            } catch (e) {
+                try {
+                    sessionStorage.setItem(key, value);
+                } catch (e2) { /* silent fail */ }
+            }
+        }
+
         /* ================= GAME LOGIC & STATE ================= */
-        let savedSize = localStorage.getItem('blockPuzzleSize');
+        let savedSize = storageGet('blockPuzzleSize');
         let BOARD_SIZE = savedSize ? parseInt(savedSize) : 8;
         let board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(0));
-        let cellElements = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null)); // DOM Cache
+        let cellElements = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
         let score = 0;
-        let bestScore = localStorage.getItem(`blockPuzzleBestScore_${BOARD_SIZE}`) || 0;
+        let bestScore = storageGet('blockPuzzleBestScore_' + BOARD_SIZE, 0);
         let initialBestScore = bestScore;
-        let comboCount = 0; // Arka arkaya temizleme sayacı
+        let comboCount = 0;
         let newRecordTriggered = false;
 
-        let soundEnabled = localStorage.getItem('blockPuzzleSound') !== 'false';
-        let vibrateEnabled = localStorage.getItem('blockPuzzleVibrate') !== 'false';
+        let soundEnabled = storageGet('blockPuzzleSound', 'true') !== 'false';
+        let vibrateEnabled = storageGet('blockPuzzleVibrate', 'true') !== 'false';
 
         let audioCtx;
         function initAudio() {
@@ -532,138 +537,97 @@
             if (audioCtx.state === 'suspended') audioCtx.resume();
 
             if (type === 'drop') {
-                // Daha organik ve yumuşak bir "tok" ahşap blok/taş oturma sesi
                 const osc = audioCtx.createOscillator();
                 const gainNode = audioCtx.createGain();
                 osc.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
-
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(250, audioCtx.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.08);
-
                 gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
                 gainNode.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 0.01);
                 gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-
                 osc.start(audioCtx.currentTime);
                 osc.stop(audioCtx.currentTime + 0.15);
 
             } else if (type === 'clear') {
-                // Rahatlatıcı, su yüzeyinde seken damla / cam çanı gibi ("ethereal") arpej
-                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 (Majör pentatonik)
-                
+                const notes = [523.25, 659.25, 783.99, 1046.50];
                 notes.forEach((freq, index) => {
                     const osc = audioCtx.createOscillator();
                     const gainNode = audioCtx.createGain();
-                    
                     osc.connect(gainNode);
                     gainNode.connect(audioCtx.destination);
-                    
                     osc.type = 'sine';
                     osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-                    
                     const startTime = audioCtx.currentTime + (index * 0.08);
                     const duration = 0.6;
-                    
                     gainNode.gain.setValueAtTime(0, startTime);
                     gainNode.gain.linearRampToValueAtTime(0.15, startTime + 0.02);
                     gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-                    
                     osc.start(startTime);
                     osc.stop(startTime + duration + 0.1);
                 });
 
             } else if (type === 'combo') {
-                // Enerjik, yükselen, hızlı bir arpej (Combo!)
-                const notes = [392.00, 523.25, 659.25, 783.99, 1046.50, 1318.51]; // G4, C5, E5, G5, C6, E6
-                
+                const notes = [392.00, 523.25, 659.25, 783.99, 1046.50, 1318.51];
                 notes.forEach((freq, index) => {
                     const osc = audioCtx.createOscillator();
                     const gainNode = audioCtx.createGain();
-                    
                     osc.connect(gainNode);
                     gainNode.connect(audioCtx.destination);
-                    
-                    osc.type = 'triangle'; // Daha parlak ve enerjik
+                    osc.type = 'triangle';
                     osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-                    
                     const startTime = audioCtx.currentTime + (index * 0.06);
                     const duration = 0.4;
-                    
                     gainNode.gain.setValueAtTime(0, startTime);
                     gainNode.gain.linearRampToValueAtTime(0.2, startTime + 0.02);
                     gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-                    
                     osc.start(startTime);
                     osc.stop(startTime + duration + 0.1);
                 });
 
             } else if (type === 'gameover') {
-                // Kaybetme sesi: Çatırdama (tırtıklı) yapmaması için çok pürüzsüz ve yavaş sönümlenen bir akor
-                const noteFreqs = [220.00, 261.63, 329.63]; // A3, C4, E4
-                
+                const noteFreqs = [220.00, 261.63, 329.63];
                 noteFreqs.forEach((freq, index) => {
                     const osc = audioCtx.createOscillator();
                     const gainNode = audioCtx.createGain();
-                    
                     osc.connect(gainNode);
                     gainNode.connect(audioCtx.destination);
-                    
-                    osc.type = 'sine'; // Pürüzsüz dalga
+                    osc.type = 'sine';
                     osc.frequency.value = freq;
-                    
                     const now = audioCtx.currentTime;
-                    const startTime = now + (index * 0.15); // Akor notaları art arda girsin
-                    
+                    const startTime = now + (index * 0.15);
                     gainNode.gain.setValueAtTime(0, startTime);
-                    // Gain değerini düşük tuttuk (0.1) ki clipping/tırtıklanma olmasın
                     gainNode.gain.linearRampToValueAtTime(0.1, startTime + 0.5);
-                    // setTargetAtTime ile pürüzsüz bir doğal sönümleme
                     gainNode.gain.setTargetAtTime(0, startTime + 0.5, 0.6);
-                    
                     osc.start(startTime);
                     osc.stop(startTime + 3.5);
                 });
             }
         }
 
-        // Renk paleti class indexleri (1-8 arası)
         const COLORS = [1, 2, 3, 4, 5, 6, 7, 8];
 
-        // Şekil veritabanı (1'ler blok, 0'lar boşluk)
         const SHAPES_DATA = [
-            // 1x1
-            [[1]], [[1]], [[1]], // Kolaylık için basit şekilleri artırdık
-            // 2x2
+            [[1]], [[1]], [[1]],
             [[1, 1], [1, 1]], [[1, 1], [1, 1]],
-            // 3x3
             [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
-            // Çizgiler (Yatay ve Dikey)
             [[1, 1]], [[1], [1]], [[1, 1]], [[1], [1]],
             [[1, 1, 1]], [[1], [1], [1]], [[1, 1, 1]], [[1], [1], [1]],
             [[1, 1, 1, 1]], [[1], [1], [1], [1]],
             [[1, 1, 1, 1, 1]], [[1], [1], [1], [1], [1]],
-            // L Şekilleri (Küçük)
             [[1, 0], [1, 1]], [[0, 1], [1, 1]], [[1, 1], [1, 0]], [[1, 1], [0, 1]],
-            // L Şekilleri (Büyük)
             [[1, 0, 0], [1, 0, 0], [1, 1, 1]], [[0, 0, 1], [0, 0, 1], [1, 1, 1]], [[1, 1, 1], [1, 0, 0], [1, 0, 0]], [[1, 1, 1], [0, 0, 1], [0, 0, 1]],
-            // L Şekilleri (3x2 ve 2x3)
             [[1, 0], [1, 0], [1, 1]], [[0, 1], [0, 1], [1, 1]], [[1, 1], [1, 0], [1, 0]], [[1, 1], [0, 1], [0, 1]],
             [[1, 1, 1], [1, 0, 0]], [[1, 1, 1], [0, 0, 1]], [[1, 0, 0], [1, 1, 1]], [[0, 0, 1], [1, 1, 1]],
-            // T Şekli
             [[1, 1, 1], [0, 1, 0]], [[0, 1, 0], [1, 1, 1]], [[1, 0], [1, 1], [1, 0]], [[0, 1], [1, 1], [0, 1]],
-            // Çapraz/Merdiven
             [[1, 1, 0], [0, 1, 1]], [[0, 1, 1], [1, 1, 0]], [[0, 1], [1, 1], [1, 0]], [[1, 0], [1, 1], [0, 1]],
-            // 2'li Çapraz Bloklar
             [[1, 0], [0, 1]], [[0, 1], [1, 0]],
-            // Tam Çapraz (3'lü Nokta)
             [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[0, 0, 1], [0, 1, 0], [1, 0, 0]]
         ];
 
-        let currentShapes = [null, null, null]; // O an alt tarafta bulunan 3 blok.
+        let currentShapes = [null, null, null];
 
-        // DOM Elements
         const boardEl = document.getElementById('board');
         const scoreEl = document.getElementById('score');
         const bestScoreEl = document.getElementById('best-score');
@@ -696,11 +660,9 @@
         /* ================= INITIALIZATION ================= */
         function init() {
             updateBtnVisuals();
-            
-            // Sağ tık ve basılı tutma panellerini (context menu) engelleme (Android APK için)
+
             window.addEventListener('contextmenu', e => e.preventDefault());
 
-            // Mobil cihazlarda AudioContext'in ilk dokunuşla uyanması için optimizasyon
             const unlockAudio = () => {
                 if (soundEnabled) {
                     initAudio();
@@ -712,51 +674,45 @@
 
             soundBtn.addEventListener('click', () => {
                 soundEnabled = !soundEnabled;
-                localStorage.setItem('blockPuzzleSound', soundEnabled);
+                storageSet('blockPuzzleSound', soundEnabled);
                 updateBtnVisuals();
                 if (soundEnabled) initAudio();
             });
             vibrateBtn.addEventListener('click', () => {
                 vibrateEnabled = !vibrateEnabled;
-                localStorage.setItem('blockPuzzleVibrate', vibrateEnabled);
+                storageSet('blockPuzzleVibrate', vibrateEnabled);
                 updateBtnVisuals();
                 if (vibrateEnabled && navigator.vibrate) navigator.vibrate(10);
             });
 
             bestScoreEl.innerText = bestScore;
 
-            // Temayı ayarla
-            const savedTheme = localStorage.getItem('blockPuzzleTheme') || 'neon';
+            const savedTheme = storageGet('blockPuzzleTheme', 'neon');
             document.body.setAttribute('data-theme', savedTheme);
             themeSelector.value = savedTheme;
 
             themeSelector.addEventListener('change', (e) => {
                 document.body.setAttribute('data-theme', e.target.value);
-                localStorage.setItem('blockPuzzleTheme', e.target.value);
+                storageSet('blockPuzzleTheme', e.target.value);
             });
 
-            // Tahta boyutunu ayarla
             const sizeSelector = document.getElementById('board-size-selector');
             sizeSelector.value = BOARD_SIZE;
             sizeSelector.addEventListener('change', (e) => {
                 BOARD_SIZE = parseInt(e.target.value);
-                localStorage.setItem('blockPuzzleSize', BOARD_SIZE);
-                bestScore = localStorage.getItem(`blockPuzzleBestScore_${BOARD_SIZE}`) || 0;
+                storageSet('blockPuzzleSize', BOARD_SIZE);
+                bestScore = storageGet('blockPuzzleBestScore_' + BOARD_SIZE, 0);
                 bestScoreEl.innerText = bestScore;
                 restartGame();
             });
 
             restartBtn.addEventListener('click', restartGame);
 
-            // --- GERİ TUŞU (BACK BUTTON) KONTROLÜ ---
-            // 1. Browser/WebView History API yöntemi (Genel mobil tarayıcılar ve APK kapsayıcıları için)
             history.pushState({ page: 'game' }, null, '');
             window.addEventListener('popstate', (e) => {
-                // Geri dönüldüğünde hemen çıkmasın diye tekrar ileri atıyoruz (History API hack)
                 history.pushState({ page: 'game' }, null, '');
                 showExitConfirmation();
             });
-            // 2. Cordova/Capacitor yöntemi (APK native sarmalayıcılar için)
             document.addEventListener('backbutton', (e) => {
                 e.preventDefault();
                 showExitConfirmation();
@@ -769,10 +725,10 @@
 
             document.getElementById('exit-yes-btn').addEventListener('click', () => {
                 if (navigator.app && navigator.app.exitApp) {
-                    navigator.app.exitApp(); // Cordova vb.
+                    navigator.app.exitApp();
                 } else {
-                    window.close(); // PWA vs.
-                    history.go(-2); 
+                    window.close();
+                    history.go(-2);
                 }
             });
 
@@ -801,10 +757,7 @@
         function getRandomShape() {
             const shapeProto = SHAPES_DATA[Math.floor(Math.random() * SHAPES_DATA.length)];
             const colorId = COLORS[Math.floor(Math.random() * COLORS.length)];
-            return {
-                matrix: shapeProto,
-                colorId: colorId
-            };
+            return { matrix: shapeProto, colorId: colorId };
         }
 
         function generateShapes() {
@@ -822,7 +775,7 @@
         }
 
         function renderShape(slotIndex, shapeObj) {
-            const slot = document.getElementById(`slot-${slotIndex}`);
+            const slot = document.getElementById('slot-' + slotIndex);
             slot.innerHTML = '';
 
             if (!shapeObj) return;
@@ -848,7 +801,6 @@
                 }
             }
 
-            // Etkileşim Listener'ları
             shapeEl.addEventListener('touchstart', handleDragStart, { passive: false });
             shapeEl.addEventListener('mousedown', handleDragStart);
             shapeEl.addEventListener('contextmenu', e => e.preventDefault());
@@ -860,21 +812,19 @@
         let activeShapeEl = null;
         let activeShapeData = null;
         let activeSlotIndex = -1;
-        let activeOffsetX = 0;
-        let activeOffsetY = 0;
-        let currentHoverCell = null; // {r, c}
+        let currentHoverCell = null;
         let isDragging = false;
         let dragX = 0;
         let dragY = 0;
         let activeShapeWidth = 0;
         let activeShapeHeight = 0;
-        let lastHoverPosStr = ""; // Animasyonları azaltmak için
-        let cachedBoardRect = null; // Performans: Layout thrashing'i önlemek için
-        let cachedCellSize = 0; // 120hz akıcılık için
+        let lastHoverPosStr = "";
+        let cachedBoardRect = null;
+        let cachedCellSize = 0;
         let dragAnimFrame = null;
 
         function handleDragStart(e) {
-            if (activeShapeEl) return; // Çoklu parmak / double tap engeli
+            if (activeShapeEl) return;
             const targetShape = e.currentTarget;
             if (targetShape.classList.contains('unplayable')) return;
 
@@ -884,13 +834,10 @@
             activeSlotIndex = parseInt(targetShape.dataset.slot);
             activeShapeData = currentShapes[activeSlotIndex];
 
-            // Calculate cellSize to scale the dragging shape correctly
             cachedBoardRect = boardEl.getBoundingClientRect();
             cachedCellSize = (cachedBoardRect.width - (BOARD_SIZE - 1) * 2 - 8) / BOARD_SIZE;
-            const boardRect = cachedBoardRect;
             const cellSize = cachedCellSize;
 
-            // Clone to drag
             activeShapeEl = targetShape.cloneNode(true);
             activeShapeEl.classList.add('shape-active');
 
@@ -898,23 +845,19 @@
             const cols = activeShapeData.matrix[0].length;
             activeShapeEl.style.gridTemplateRows = `repeat(${rows}, ${cellSize}px)`;
             activeShapeEl.style.gridTemplateColumns = `repeat(${cols}, ${cellSize}px)`;
-            
-            // Performans için GPU ivmelendirmesini ayarlıyoruz, left-top yerine translate3d
+
             activeShapeEl.style.left = '0px';
             activeShapeEl.style.top = '0px';
-            activeShapeEl.style.willChange = 'transform'; 
-            activeShapeEl.style.transition = 'none'; // Sürüklerken CSS geçiş gecikmesini iptal et
+            activeShapeEl.style.willChange = 'transform';
+            activeShapeEl.style.transition = 'none';
 
             document.body.appendChild(activeShapeEl);
 
-            // Shape boyutlarını baştan hesaplıyoruz ki her frame'de hesaplanmasın
             activeShapeWidth = cols * cellSize + (cols - 1) * 2;
             activeShapeHeight = rows * cellSize + (rows - 1) * 2;
 
-            // Hide original
             targetShape.style.opacity = '0';
 
-            // Animasyon başlangıcı
             isDragging = true;
             dragX = touch.clientX;
             dragY = touch.clientY;
@@ -930,30 +873,24 @@
             document.addEventListener('mousemove', handleDragMove);
             document.addEventListener('mouseup', handleDragEnd);
 
-            // Vibrate slightly
             if (vibrateEnabled && navigator.vibrate) navigator.vibrate(10);
         }
 
         function handleDragMove(e) {
             if (!activeShapeEl) return;
-            if (e.cancelable) e.preventDefault(); // Warningleri en aza indirmek için cancelable kontrolü
+            if (e.cancelable) e.preventDefault();
             const touch = e.type.includes('touch') ? e.touches[0] : e;
             dragX = touch.clientX;
             dragY = touch.clientY;
-            
-            // RAF beklemeden pozisyonu anında güncelle (giriş gecikmesini önler ve parmak takibini hızlandırır)
             activeShapeEl.style.transform = `translate3d(${dragX - (activeShapeWidth / 2)}px, ${dragY - (activeShapeHeight * 1.2)}px, 0)`;
         }
 
         function dragLoop() {
             if (!isDragging || !activeShapeEl) return;
 
-            // GPU ile pozisyonlama yapıyoruz, touchmove içinde halledildiği için sadece hover kontrolü kaldı
-
-            // Hücre üstünde gezme (Sadece pozisyon değiştiğinde render et)
             const hoverPos = getHoverPosition(dragX, dragY);
             const hoverPosStr = hoverPos ? `${hoverPos.r},${hoverPos.c}` : "null";
-            
+
             if (hoverPosStr !== lastHoverPosStr) {
                 updateHoverVisuals(hoverPos);
                 lastHoverPosStr = hoverPosStr;
@@ -962,19 +899,14 @@
             dragAnimFrame = requestAnimationFrame(dragLoop);
         }
 
-        // Returns the row,col of the top-left cell on the board under the active shape
         function getHoverPosition(pointerX, pointerY) {
             if (!cachedBoardRect) return null;
             const boardRect = cachedBoardRect;
             const cellSize = cachedCellSize;
 
-            // Elementin transform'dan dolayı sol üst köşesi nerede?
-            // Önceden hesaplanmış genişlik/yükseklik değerlerini kullanarak hesap yükünü azaltıyoruz
             const shapeTop = pointerY - (activeShapeHeight * 1.2);
             const shapeLeft = pointerX - (activeShapeWidth / 2);
 
-            // Board içi kalıyor mu kontrolü (Shape in herhangi bir kısmı board grid'ine denk geliyorsa)
-            // Ortasını baz alalım ilk hücrenin
             const firstCellX = shapeLeft + (cellSize / 2);
             const firstCellY = shapeTop + (cellSize / 2);
 
@@ -990,7 +922,6 @@
         }
 
         function updateHoverVisuals(pos) {
-            // Reset old hover
             document.querySelectorAll('.hover-preview').forEach(el => {
                 el.classList.remove('hover-preview');
                 el.style.backgroundColor = '';
@@ -1003,11 +934,9 @@
 
             if (!pos) return;
 
-            // Check if valid
             if (canPlace(activeShapeData.matrix, pos.r, pos.c)) {
                 currentHoverCell = pos;
 
-                // Simulate placement on a temp board
                 let tempBoard = board.map(row => [...row]);
                 for (let r = 0; r < activeShapeData.matrix.length; r++) {
                     for (let c = 0; c < activeShapeData.matrix[0].length; c++) {
@@ -1017,7 +946,6 @@
                     }
                 }
 
-                // Identify if any rows/cols will clear
                 let willClearRows = [];
                 let willClearCols = [];
                 for (let r = 0; r < BOARD_SIZE; r++) {
@@ -1031,7 +959,6 @@
                     if (colFull) willClearCols.push(c);
                 }
 
-                // Apply dynamic CSS classes for hover and clear preview
                 for (let r = 0; r < BOARD_SIZE; r++) {
                     for (let c = 0; c < BOARD_SIZE; c++) {
                         const cellEl = getCellEl(r, c);
@@ -1062,7 +989,7 @@
         function handleDragEnd(e) {
             if (!activeShapeEl) return;
 
-            isDragging = false; // Animasyon döngüsünü durdurur
+            isDragging = false;
             if (dragAnimFrame) {
                 cancelAnimationFrame(dragAnimFrame);
                 dragAnimFrame = null;
@@ -1077,7 +1004,6 @@
             const originalShapeEl = document.querySelector(`.shape[data-slot="${activeSlotIndex}"]`);
 
             if (currentHoverCell) {
-                // Pre-clean previews
                 document.querySelectorAll('.hover-preview').forEach(el => {
                     el.classList.remove('hover-preview');
                     el.style.backgroundColor = '';
@@ -1086,14 +1012,12 @@
                     el.classList.remove('will-clear-preview');
                 });
 
-                // Tahtaya yerleştir!
                 placeShape(activeShapeData, currentHoverCell.r, currentHoverCell.c);
                 currentShapes[activeSlotIndex] = null;
-                document.getElementById(`slot-${activeSlotIndex}`).innerHTML = '';
+                document.getElementById('slot-' + activeSlotIndex).innerHTML = '';
 
                 checkLines();
 
-                // Eğer slotlar boşaldıysa yenilerini oluştur
                 if (currentShapes.every(s => s === null)) {
                     generateShapes();
                 } else {
@@ -1103,9 +1027,7 @@
                 if (vibrateEnabled && navigator.vibrate) navigator.vibrate(20);
                 playSound('drop');
             } else {
-                // Geri dön
-                originalShapeEl.style.opacity = '1';
-                // Reset hover
+                if (originalShapeEl) originalShapeEl.style.opacity = '1';
                 document.querySelectorAll('.hover-preview').forEach(el => {
                     el.classList.remove('hover-preview');
                     el.style.backgroundColor = '';
@@ -1130,12 +1052,8 @@
                     if (matrix[r][c] === 1) {
                         let br = startRow + r;
                         let bc = startCol + c;
-                        if (br < 0 || br >= BOARD_SIZE || bc < 0 || bc >= BOARD_SIZE) {
-                            return false; // Out of bounds
-                        }
-                        if (board[br][bc] !== 0) {
-                            return false; // Collision
-                        }
+                        if (br < 0 || br >= BOARD_SIZE || bc < 0 || bc >= BOARD_SIZE) return false;
+                        if (board[br][bc] !== 0) return false;
                     }
                 }
             }
@@ -1157,14 +1075,13 @@
                     }
                 }
             }
-            addScore(blocksPlaced * 10); // Her yerleştirilen blok 10 puan
+            addScore(blocksPlaced * 10);
         }
 
         function checkLines() {
             let rowsToClear = [];
             let colsToClear = [];
 
-            // Satır kontrolü
             for (let r = 0; r < BOARD_SIZE; r++) {
                 let full = true;
                 for (let c = 0; c < BOARD_SIZE; c++) {
@@ -1173,7 +1090,6 @@
                 if (full) rowsToClear.push(r);
             }
 
-            // Sütun kontrolü
             for (let c = 0; c < BOARD_SIZE; c++) {
                 let full = true;
                 for (let r = 0; r < BOARD_SIZE; r++) {
@@ -1182,7 +1098,6 @@
                 if (full) colsToClear.push(c);
             }
 
-            // Temizleme işlemi
             if (rowsToClear.length > 0 || colsToClear.length > 0) {
                 let cellsToClear = new Set();
 
@@ -1199,29 +1114,21 @@
                     board[r][c] = 0;
                     const cellEl = getCellEl(r, c);
                     cellEl.classList.add('clearing');
-                    // Animasyon bitince temizle
                     setTimeout(() => {
                         cellEl.classList.remove('clearing', 'filled');
                         cellEl.style.backgroundColor = '';
                     }, 300);
                 });
 
-                // Skor hesabı (Artırılmış)
                 const linesCleared = rowsToClear.length + colsToClear.length;
-                
-                // Ardışık tur kombosu veya aynı anda çoklu çizgi temizleme kombo sayacını günceller
                 comboCount += linesCleared;
-                
-                let lineScore = linesCleared * 100;
 
-                // Birden çok satır aynı anda temizlendiyse baz puan artışı
-                if (linesCleared > 1) {
-                    lineScore *= linesCleared; // 2 çizgi = 400, 3 = 900
-                }
+                let lineScore = linesCleared * 100;
+                if (linesCleared > 1) lineScore *= linesCleared;
 
                 if (comboCount > 1) {
-                    lineScore += (comboCount * 50); // Sabit kombo bonusu
-                    lineScore *= 1.5; // Toplam puana ekstra %50 kombo katı
+                    lineScore += (comboCount * 50);
+                    lineScore *= 1.5;
                     lineScore = Math.floor(lineScore);
                     showComboText(comboCount);
                 }
@@ -1234,7 +1141,7 @@
                 }
                 if (vibrateEnabled && navigator.vibrate) navigator.vibrate([50, 50, 50]);
             } else {
-                comboCount = 0; // Temizleme yoksa komboyu sıfırla
+                comboCount = 0;
             }
         }
 
@@ -1265,7 +1172,6 @@
                 if (!shapeObj) continue;
 
                 let shapeCanBePlaced = false;
-                // Bu shape tahtaya sığıyor mu?
                 for (let r = 0; r < BOARD_SIZE; r++) {
                     for (let c = 0; c < BOARD_SIZE; c++) {
                         if (canPlace(shapeObj.matrix, r, c)) {
@@ -1276,7 +1182,6 @@
                     if (shapeCanBePlaced) break;
                 }
 
-                // Ekranda güncelleyelim
                 const shapeEl = document.querySelector(`.shape[data-slot="${i}"]`);
                 if (shapeEl) {
                     if (!shapeCanBePlaced) {
@@ -1286,12 +1191,9 @@
                     }
                 }
 
-                if (shapeCanBePlaced) {
-                    canMakeMove = true;
-                }
+                if (shapeCanBePlaced) canMakeMove = true;
             }
 
-            // Aktif olarak şekil var ama yerleştirilemiyorsa
             if (currentShapes.some(s => s !== null) && !canMakeMove) {
                 gameOver();
             }
@@ -1307,10 +1209,10 @@
             playSound('gameover');
             finalScoreEl.innerText = score;
             const gameOverTitle = document.getElementById('game-over-title');
-            
+
             if (newRecordTriggered) {
                 gameOverTitle.innerText = "YENİ REKOR!";
-                gameOverTitle.style.color = "#facc15"; // Sarı altın renk
+                gameOverTitle.style.color = "#facc15";
                 gameOverTitle.style.textShadow = "0 0 15px rgba(250, 204, 21, 0.6)";
             } else {
                 gameOverTitle.innerText = "Oyun Bitti!";
@@ -1320,7 +1222,7 @@
 
             if (score > bestScore) {
                 bestScore = score;
-                localStorage.setItem(`blockPuzzleBestScore_${BOARD_SIZE}`, bestScore);
+                storageSet('blockPuzzleBestScore_' + BOARD_SIZE, bestScore);
                 bestScoreEl.innerText = bestScore;
             }
             document.getElementById('exit-modal').style.display = 'none';
@@ -1331,16 +1233,13 @@
         function restartGame() {
             board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(0));
             score = 0;
-            comboCount = 0; // Kombo sayacını sıfırla
-            newRecordTriggered = false; // Rekor bayrağını sıfırla
-            initialBestScore = localStorage.getItem(`blockPuzzleBestScore_${BOARD_SIZE}`) || 0;
+            comboCount = 0;
+            newRecordTriggered = false;
+            initialBestScore = parseInt(storageGet('blockPuzzleBestScore_' + BOARD_SIZE, 0)) || 0;
             scoreEl.innerText = score;
             createBoard();
             currentShapes = [null, null, null];
-
-            // clear shape slots
-            for (let i = 0; i < 3; i++) document.getElementById(`slot-${i}`).innerHTML = '';
-
+            for (let i = 0; i < 3; i++) document.getElementById('slot-' + i).innerHTML = '';
             generateShapes();
             modalOverlay.classList.remove('active');
         }
@@ -1353,28 +1252,25 @@
             score += points;
             scoreEl.innerText = score;
 
-            // Bump animasyonu
             scoreEl.classList.remove('bump');
-            void scoreEl.offsetWidth; // trigger reflow
+            void scoreEl.offsetWidth;
             scoreEl.classList.add('bump');
             setTimeout(() => scoreEl.classList.remove('bump'), 200);
 
-            // Yeni Rekor kontrolü
-            if (initialBestScore > 0 && score > initialBestScore && !newRecordTriggered) {
+            if (parseInt(initialBestScore) > 0 && score > parseInt(initialBestScore) && !newRecordTriggered) {
                 newRecordTriggered = true;
                 showRecordText();
                 if (vibrateEnabled && navigator.vibrate) navigator.vibrate([100, 50, 100]);
             }
             if (score > bestScore) {
                 bestScore = score;
-                localStorage.setItem(`blockPuzzleBestScore_${BOARD_SIZE}`, bestScore);
+                storageSet('blockPuzzleBestScore_' + BOARD_SIZE, bestScore);
                 bestScoreEl.innerText = bestScore;
             }
         }
 
         /* ================= START ================= */
         window.addEventListener('load', init);
-
     </script>
 </body>
 
